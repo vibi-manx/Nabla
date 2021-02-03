@@ -17,11 +17,14 @@ layout (set = 0, binding = 0, std430) restrict buffer PARTICLE_DATA
 {
 	vec3 p[PARTICLE_COUNT];
 } data[BUF_COUNT];
+
 layout (set = 0, binding = 1, std140) uniform UBO
 {
 	vec3 gravP;
 	float dt;
 } ubo;
+
+layout (binding = 2, r32f) uniform image2D imageOut;
 
 void main()
 {
@@ -39,4 +42,7 @@ void main()
 	data[POS_BUF_IX].p[GID] = p;
 	data[VEL_BUF_IX].p[GID] = v;
 #endif
+	imageStore(imageOut, ivec2(gl_GlobalInvocationID.x,0),vec4(0.5f));
+
+
 }
