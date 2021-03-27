@@ -600,6 +600,41 @@ int main()
 			fftPushConstants[2].output_strides = fftPushConstants[0].input_strides;
 		}
 		fftDispatchInfo[2] = fftDispatchInfo[0];
+		//fftDispatchInfo[0].workGroupCount[0]++;
+		//fftDispatchInfo[0].workGroupCount[0]>>=1u;
+		fftDispatchInfo[1].workGroupCount[1]++;
+		fftDispatchInfo[1].workGroupCount[1]>>=1u;
+/*
+Plan of action:
+	- First axis does full FFT of two slices of the next axis but only writes half the axis
+	- Only half the workgroups for the next axis
+	- Each invocation does two slices of work
+
+	- At the end an "unfucking" is needed to not write 200% of the unique spectrum (could be part of special wrap)
+
+	- Second axis does FFT as normal of the untouched spectrum, but only half "first axis stuff"
+
+	- Last Inverse FFT needs to be aware that first fft/last ifft axis is half the size and needs special padding
+
+fftPushConstants[0].input_dimensions.w |= REAL_INPUT;
+fftPushConstants[0].output_strides[direction[1]] >>= 1u; //verify
+++ffDispatchInfo[0].workgroupCount[direction[1]] >>= 1u;
+
+fftPushConstants[1].input_dimensions[direction[0]]>>=1u;
+// strides will be less to accomodate
+fftPushConstants[1].input_dimensions.w = WRAP_REAL_FFT_OUTPUT; // know how to read slices
+++ffDispatchInfo[1].workgroupCount[direction[0]] >>= 1u;
+
+fftPushConstants[2].input_dimensions[direction[0]]>>=1u;
+//strides will be less to accomodate
+++ffDispatchInfo[2].workgroupCount[direction[0]] >>= 1u;
+
+IFFT
+
+Half the dispatches in direction[1]
+Reconstruct the intertangled spectra
+spit out real and imaginary to separate planes
+*/
 	}
 	assert(passes==2);
 	// pipelines

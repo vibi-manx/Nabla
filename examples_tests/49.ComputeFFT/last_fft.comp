@@ -34,4 +34,26 @@ void nbl_glsl_ext_FFT_setData(in uvec3 coordinate, in uint channel, in nbl_glsl_
 #define _NBL_GLSL_EXT_FFT_SET_DATA_DEFINED_
 
 
+nbl_glsl_complex nbl_glsl_ext_FFT_getPaddedData(ivec3 coordinate, in uint channel);
+#define _NBL_GLSL_EXT_FFT_GET_PADDED_DATA_DEFINED_
+
 #include "nbl/builtin/glsl/ext/FFT/default_compute_fft.comp"
+
+nbl_glsl_complex nbl_glsl_ext_FFT_getPaddedData(ivec3 coordinate, in uint channel) 
+{
+	if (!nbl_glsl_ext_FFT_wrap_coord(coordinate))
+		return nbl_glsl_complex(0.f,0.f);
+
+	// TODO choose coordinate wisely!
+	const bool upperHalf = bool(coordinate.y&0x1u);
+	if (upperHalf)
+		coordinate.y = (0x3<<findMSB(coordinate.y))+(~coordinate.y);
+	
+	const uint index = nbl_glsl_dot(uvec4(coordinate,channel),nbl_glsl_ext_FFT_Parameters_t_getInputStrides());
+	nbl_glsl_complex retval = nbl_glsl_ext_FFT_storage_t_get(inData[index]);
+	
+	if (upperHalf)
+		retval.y = -retval.y;
+	
+	return retval;
+}

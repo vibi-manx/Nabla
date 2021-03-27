@@ -35,6 +35,7 @@ nbl_glsl_complex nbl_glsl_ext_FFT_getPaddedData(in ivec3 coordinate, in uint cha
 #error "You need to define `nbl_glsl_ext_FFT_getPaddedData` and mark `_NBL_GLSL_EXT_FFT_GET_PADDED_DATA_DEFINED_`!"
 #endif
 
+#ifndef butt
 uvec3 nbl_glsl_ext_FFT_getCoordinates(in uint tidx)
 {
     uint direction = nbl_glsl_ext_FFT_Parameters_t_getDirection();
@@ -42,6 +43,7 @@ uvec3 nbl_glsl_ext_FFT_getCoordinates(in uint tidx)
     tmp[direction] = tidx;
     return tmp;
 }
+#endif
 ivec3 nbl_glsl_ext_FFT_getPaddedCoordinates(in uint tidx, in uint log2FFTSize, in uint trueDimension)
 {
     const uint padding = ((0x1u<<log2FFTSize)-trueDimension)>>1u;

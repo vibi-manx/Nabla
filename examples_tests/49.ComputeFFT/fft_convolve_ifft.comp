@@ -17,6 +17,15 @@ nbl_glsl_ext_FFT_Parameters_t nbl_glsl_ext_FFT_getParameters()
 }
 #define _NBL_GLSL_EXT_FFT_GET_PARAMETERS_DEFINED_
 
+#define butt
+uvec3 nbl_glsl_ext_FFT_getCoordinates(in uint tidx)
+{
+    uint direction = nbl_glsl_ext_FFT_Parameters_t_getDirection();
+    uvec3 tmp = gl_WorkGroupID;
+	tmp.y<<=1u;
+    tmp[direction] = tidx;
+    return tmp;
+}
 #define _NBL_GLSL_EXT_FFT_MAIN_DEFINED_
 #include "nbl/builtin/glsl/ext/FFT/default_compute_fft.comp"
 
