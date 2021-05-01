@@ -58,13 +58,72 @@ struct RadixSorter
 		_NBL_STATIC_INLINE_CONSTEXPR size_t last_pass = (key_bit_count-1ull)/size_t(radix_bits);
 		_NBL_STATIC_INLINE_CONSTEXPR uint16_t radix_mask = (1u<<radix_bits)-1u;
 
+		enum class PassMod { First, Default, Last };
+
+		template<class RandomIt, class KeyAccessor, size_t pass_ix, PassMod pass_mod>
+		struct Pass
+		{
+			inline RandomIt operator()(RandomIt input, RandomIt output, const histogram_t rangeSize, const KeyAccessor& comp, histogram_t (&histogram_front)[histogram_size], histogram_t(&histogram_back)[histogram_size]);
+		};
+
+		template<class RandomIt, class KeyAccessor, size_t pass_ix>
+		struct Pass<RandomIt, KeyAccessor, pass_ix, PassMod::Default>
+		{
+			inline RandomIt operator()(RandomIt input, RandomIt output, const histogram_t rangeSize, const KeyAccessor& comp, histogram_t(&histogram_front)[histogram_size], histogram_t(&histogram_back)[histogram_size]) {
+				constexpr histogram_t shift = static_cast<histogram_t>(radix_bits * pass_ix);
+				std::fill_n(histogram_front, histogram_size, static_cast<histogram_t>(0u));
+				std::inclusive_scan(histogram_back, histogram_back + histogram_size, histogram_back);
+				for (histogram_t i = rangeSize; i != 0u;)
+				{
+					i--;
+					++histogram_front[comp.operator() < shift, radix_mask > (input[(rangeSize - 1) - i])];
+					output[--histogram_back[comp.operator() < shift, radix_mask > (input[i])]] = input[i];
+				}
+
+				if constexpr (pass_ix != last_pass)
+					return Pass<RandomIt, KeyAccessor, pass_ix + 1ull, PassMod::Default>{}(output, input, rangeSize, comp, histogram_back, histogram_front);
+				else
+					return Pass<RandomIt, KeyAccessor, pass_ix, PassMod::Last>{}(input, output, rangeSize, comp, histogram_back, histogram_front);
+			}
+		};
+
+		template<class RandomIt, class KeyAccessor, size_t pass_ix>
+		struct Pass<RandomIt, KeyAccessor, pass_ix, PassMod::First>
+		{
+			inline RandomIt operator()(RandomIt input, RandomIt output, const histogram_t rangeSize, const KeyAccessor& comp, histogram_t(&histogram_front)[histogram_size], histogram_t(&histogram_back)[histogram_size]) {
+				constexpr histogram_t shift = static_cast<histogram_t>(radix_bits * pass_ix);
+				std::fill_n(histogram_front, histogram_size, static_cast<histogram_t>(0u));
+				for (histogram_t i = 0u; i < rangeSize; i++)
+					++histogram_front[comp.operator() < shift, radix_mask > (input[i])];
+				if constexpr (pass_ix != last_pass)
+					return Pass<RandomIt, KeyAccessor, pass_ix + 1ull, PassMod::Default>{}(output, input, rangeSize, comp, histogram_back, histogram_front);
+				else 
+					return Pass<RandomIt, KeyAccessor, pass_ix, PassMod::Last>{}(input, output, rangeSize, comp, histogram_front, histogram_back);
+			}
+		};
+
+		template<class RandomIt, class KeyAccessor, size_t pass_ix>
+		struct Pass<RandomIt, KeyAccessor, pass_ix, PassMod::Last>
+		{
+			inline RandomIt operator()(RandomIt input, RandomIt output, const histogram_t rangeSize, const KeyAccessor& comp, histogram_t(&histogram_front)[histogram_size], histogram_t(&histogram_back)[histogram_size]) {
+				constexpr histogram_t shift = static_cast<histogram_t>(radix_bits * pass_ix);
+				std::inclusive_scan(histogram_front, histogram_front + histogram_size, histogram_front);
+				for (histogram_t i = rangeSize; i != 0u;)
+				{
+					i--;
+					output[--histogram_front[comp.operator() < shift, radix_mask > (input[i])]] = input[i];
+				}
+				return output;
+			}
+		};
+
 		template<class RandomIt, class KeyAccessor>
 		inline RandomIt operator()(RandomIt input, RandomIt output, const histogram_t rangeSize, const KeyAccessor& comp)
 		{
-			return pass<RandomIt,KeyAccessor,0ull>(input,output,rangeSize,comp);
+			return Pass<RandomIt,KeyAccessor,0ull,PassMod::First>{}(input, output, rangeSize, comp, histogram[0], histogram[1]);
 		}
 	private:
-		template<class RandomIt, class KeyAccessor, size_t pass_ix>
+		/*template<class RandomIt, class KeyAccessor, size_t pass_ix>
 		inline RandomIt pass(RandomIt input, RandomIt output, const histogram_t rangeSize, const KeyAccessor& comp)
 		{
 			// clear
@@ -86,9 +145,9 @@ struct RadixSorter
 				return pass<RandomIt,KeyAccessor,pass_ix+1ull>(output,input,rangeSize,comp);
 			else
 				return output;
-		}
+		}*/
 	
-		alignas(sizeof(histogram_t)) histogram_t histogram[histogram_size];
+		alignas(sizeof(histogram_t)) histogram_t histogram[2][histogram_size];
 };
 
 }
